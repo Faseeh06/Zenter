@@ -3,6 +3,7 @@
 import { ArrowUpRight } from "lucide-react";
 import { AnimatedWave } from "./animated-wave";
 import Link from "next/link";
+import Image from "next/image";
 
 const footerLinks = {
   Platform: [
@@ -49,7 +50,13 @@ export function FooterSection() {
             {/* Brand Column */}
             <div className="col-span-2">
               <Link href="/" className="inline-flex items-center gap-2 mb-6">
-                <span className="text-2xl font-display">Zenter</span>
+                <Image
+                  src="/logo/full.png"
+                  alt="Zenter Logo"
+                  width={120}
+                  height={40}
+                  className="object-contain"
+                />
               </Link>
 
               <p className="text-muted-foreground leading-relaxed mb-8 max-w-xs">

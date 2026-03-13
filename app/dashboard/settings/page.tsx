@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, User, Key, Bell, Shield, UploadCloud, Github, Twitter, Linkedin, ExternalLink } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, User, Key, Bell, Shield, UploadCloud, Github, Twitter, Linkedin, ExternalLink, Paintbrush, Moon, Sun, Monitor } from "lucide-react";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export default function SettingsPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const { theme, setTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -50,6 +57,10 @@ export default function SettingsPage() {
                     <TabsTrigger value="notifications" className="font-mono text-xs uppercase tracking-widest px-4 py-3 h-auto data-[state=active]:bg-foreground/5 data-[state=active]:shadow-none rounded-sm">
                         <Bell className="w-4 h-4 mr-2" />
                         Notifications
+                    </TabsTrigger>
+                    <TabsTrigger value="appearance" className="font-mono text-xs uppercase tracking-widest px-4 py-3 h-auto data-[state=active]:bg-foreground/5 data-[state=active]:shadow-none rounded-sm">
+                        <Paintbrush className="w-4 h-4 mr-2" />
+                        Appearance
                     </TabsTrigger>
                 </TabsList>
 
@@ -286,6 +297,57 @@ export default function SettingsPage() {
                                 >
                                     Save Preferences
                                 </Button>
+                            </div>
+                        </div>
+                    </div>
+                </TabsContent>
+
+                {/* Appearance Tab */}
+                <TabsContent value="appearance" className="space-y-8 focus-visible:outline-none focus-visible:ring-0">
+                    <div className="p-6 md:p-8 rounded-2xl border border-foreground/10 bg-background/50 backdrop-blur-md relative overflow-hidden">
+                        <div className="space-y-8">
+                            <div>
+                                <h3 className="font-display text-xl tracking-tight mb-2">Appearance</h3>
+                                <p className="text-sm text-muted-foreground">Customize how Zenter looks on your device.</p>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="space-y-3">
+                                    <Label className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Theme Preference</Label>
+                                    {mounted && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setTheme("light")}
+                                                className={`flex flex-col items-center justify-center p-6 border rounded-xl gap-4 transition-all ${theme === 'light' ? 'border-foreground bg-foreground/5 relative overflow-hidden shadow-sm' : 'border-foreground/10 hover:border-foreground/30 hover:bg-foreground/2'}`}
+                                            >
+                                                {theme === 'light' && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-foreground" />}
+                                                <Sun className={`w-8 h-8 ${theme === 'light' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                                                <span className={`font-medium text-sm ${theme === 'light' ? 'text-foreground' : 'text-muted-foreground'}`}>Light Mode</span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setTheme("dark")}
+                                                className={`flex flex-col items-center justify-center p-6 border rounded-xl gap-4 transition-all ${theme === 'dark' ? 'border-foreground bg-foreground/5 relative overflow-hidden shadow-sm' : 'border-foreground/10 hover:border-foreground/30 hover:bg-foreground/2'}`}
+                                            >
+                                                {theme === 'dark' && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-foreground" />}
+                                                <Moon className={`w-8 h-8 ${theme === 'dark' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                                                <span className={`font-medium text-sm ${theme === 'dark' ? 'text-foreground' : 'text-muted-foreground'}`}>Dark Mode</span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setTheme("system")}
+                                                className={`flex flex-col items-center justify-center p-6 border rounded-xl gap-4 transition-all ${theme === 'system' ? 'border-foreground bg-foreground/5 relative overflow-hidden shadow-sm' : 'border-foreground/10 hover:border-foreground/30 hover:bg-foreground/2'}`}
+                                            >
+                                                {theme === 'system' && <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-foreground" />}
+                                                <Monitor className={`w-8 h-8 ${theme === 'system' ? 'text-foreground' : 'text-muted-foreground'}`} />
+                                                <span className={`font-medium text-sm ${theme === 'system' ? 'text-foreground' : 'text-muted-foreground'}`}>System Sync</span>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { LayoutDashboard, PlaySquare, FolderDot, Briefcase, Settings, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import {
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const navItems = [
     { title: "Overview", icon: LayoutDashboard, href: "/dashboard" },
@@ -40,7 +42,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Sidebar className="border-r border-foreground/10 bg-background/50 backdrop-blur-md">
                     <SidebarHeader className="p-6">
                         <Link href="/" className="flex items-center gap-2">
-                            <span className="text-xl font-display tracking-tight">Zenter</span>
+                            <Image
+                                src="/logo/full.png"
+                                alt="Zenter Logo"
+                                width={120}
+                                height={40}
+                                className="object-contain"
+                            />
                         </Link>
                     </SidebarHeader>
                     <SidebarContent>
@@ -106,6 +114,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </div>
 
                         <div className="flex items-center gap-4">
+                            <ThemeToggle />
                             <div className="text-right hidden sm:block">
                                 <p className="text-sm font-medium leading-none">John Doe</p>
                                 <p className="text-[10px] uppercase tracking-widest font-mono text-muted-foreground mt-1">Free Tier</p>

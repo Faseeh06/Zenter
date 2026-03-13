@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, ArrowRight } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,7 +50,16 @@ export default function SignUpPage() {
             <div className="absolute bottom-0 left-0 w-16 h-16 border-t border-r border-foreground/10" />
 
             <div className="relative z-10">
-                <div className="mb-10 text-center">
+                <div className="mb-10 text-center flex flex-col items-center">
+                    <Link href="/" className="mb-8 inline-block">
+                        <Image
+                            src="/logo/full.png"
+                            alt="Zenter Logo"
+                            width={160}
+                            height={53}
+                            className="object-contain"
+                        />
+                    </Link>
                     <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground mb-4">
                         <span className="w-8 h-px bg-foreground/30" />
                         Get Started

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 const navLinks = [
   { name: "Home", href: "/" },
@@ -27,14 +28,14 @@ export function Navigation() {
   return (
     <header
       className={`fixed z-50 transition-all duration-500 ${isScrolled
-          ? "top-4 left-4 right-4"
-          : "top-0 left-0 right-0"
+        ? "top-4 left-4 right-4"
+        : "top-0 left-0 right-0"
         }`}
     >
       <nav
         className={`mx-auto transition-all duration-500 ${isScrolled || isMobileMenuOpen
-            ? "bg-background/80 backdrop-blur-xl border border-foreground/10 rounded-2xl shadow-lg max-w-[1200px]"
-            : "bg-transparent max-w-[1400px]"
+          ? "bg-background/80 backdrop-blur-xl border border-foreground/10 rounded-2xl shadow-lg max-w-[1200px]"
+          : "bg-transparent max-w-[1400px]"
           }`}
       >
         <div
@@ -43,7 +44,13 @@ export function Navigation() {
         >
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <span className={`font-display tracking-tight transition-all duration-500 ${isScrolled ? "text-xl" : "text-2xl"}`}>Zenter</span>
+            <Image
+              src="/logo/full.png"
+              alt="Zenter Logo"
+              width={isScrolled ? 100 : 120}
+              height={40}
+              className={`object-contain transition-all duration-500`}
+            />
           </Link>
 
           {/* Desktop Navigation */}
@@ -94,8 +101,8 @@ export function Navigation() {
       {/* Mobile Menu - Full Screen Overlay */}
       <div
         className={`md:hidden fixed inset-0 bg-background z-40 transition-all duration-500 ${isMobileMenuOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none"
           }`}
         style={{ top: 0 }}
       >
@@ -108,8 +115,8 @@ export function Navigation() {
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`text-5xl font-display text-foreground hover:text-muted-foreground transition-all duration-500 ${isMobileMenuOpen
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-4"
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-4"
                   }`}
                 style={{ transitionDelay: isMobileMenuOpen ? `${i * 75}ms` : "0ms" }}
               >
@@ -120,8 +127,8 @@ export function Navigation() {
 
           {/* Bottom CTAs */}
           <div className={`flex gap-4 pt-8 border-t border-foreground/10 transition-all duration-500 ${isMobileMenuOpen
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-4"
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 translate-y-4"
             }`}
             style={{ transitionDelay: isMobileMenuOpen ? "300ms" : "0ms" }}
           >

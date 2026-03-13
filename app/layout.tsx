@@ -3,19 +3,20 @@ import type { Metadata } from 'next'
 import { Instrument_Sans, Instrument_Serif, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
+import { ThemeProvider } from "@/components/theme-provider"
 
-const instrumentSans = Instrument_Sans({ 
+const instrumentSans = Instrument_Sans({
   subsets: ["latin"],
   variable: '--font-instrument'
 });
 
-const instrumentSerif = Instrument_Serif({ 
+const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
   weight: "400",
   variable: '--font-instrument-serif'
 });
 
-const jetbrainsMono = JetBrains_Mono({ 
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: '--font-jetbrains'
 });
@@ -23,6 +24,9 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'Zenter — Learn. Build. Showcase.',
   description: 'Your all-in-one platform for video learning, internships, and project showcasing. Learn from curated video lectures, build real-world projects, and showcase your work to the world.',
+  icons: {
+    icon: '/logo/Small.png',
+  },
 }
 
 export default function RootLayout({
@@ -31,9 +35,16 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${instrumentSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>
