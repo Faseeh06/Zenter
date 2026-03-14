@@ -1,18 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // If user is already logged in, send them to dashboard
+    useEffect(() => {
+        const checkSession = async () => {
+            const supabase = createSupabaseBrowserClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                router.replace("/dashboard");
+            }
+        };
+        checkSession();
+    }, [router]);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -23,18 +37,21 @@ export default function LoginPage() {
         const email = formData.get("email") as string;
         const password = formData.get("password") as string;
 
-        if (email !== "demo@zenter.com" || password !== "password123") {
+        const supabase = createSupabaseBrowserClient();
+        const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+
+        if (error) {
             setIsLoading(false);
-            setError("Invalid credentials. Try demo@zenter.com / password123");
+            setError(error.message || "Unable to sign in. Please try again.");
             return;
         }
 
-        // Mock network request
-        setTimeout(() => {
-            setIsLoading(false);
-            // Automatically redirecting to dashboard since database is skipped
-            router.push("/dashboard");
-        }, 1500);
+        const redirectTo = searchParams.get("redirectTo") || "/dashboard";
+        router.push(redirectTo);
+        setIsLoading(false);
     };
 
     return (
@@ -80,7 +97,6 @@ export default function LoginPage() {
                             id="email"
                             name="email"
                             type="email"
-                            defaultValue="demo@zenter.com"
                             placeholder="you@example.com"
                             required
                             disabled={isLoading}

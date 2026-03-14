@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, ArrowRight } from "lucide-react";
@@ -8,11 +8,24 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function SignUpPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // If user is already logged in, redirect to dashboard
+    useEffect(() => {
+        const checkSession = async () => {
+            const supabase = createSupabaseBrowserClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                router.replace("/dashboard");
+            }
+        };
+        checkSession();
+    }, [router]);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -20,6 +33,8 @@ export default function SignUpPage() {
         setError(null);
 
         const formData = new FormData(e.currentTarget);
+        const fullName = formData.get("fullName") as string;
+        const email = formData.get("email") as string;
         const password = formData.get("password") as string;
         const confirmPassword = formData.get("confirmPassword") as string;
 
@@ -35,12 +50,27 @@ export default function SignUpPage() {
             return;
         }
 
-        // Mock network request
-        setTimeout(() => {
+        const supabase = createSupabaseBrowserClient();
+        const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    full_name: fullName,
+                },
+            },
+        });
+
+        if (error) {
+            setError(error.message || "Unable to create account. Please try again.");
             setIsLoading(false);
-            // Automatically redirecting to dashboard since database is skipped
-            router.push("/dashboard");
-        }, 1500);
+            return;
+        }
+
+        // For email/password sign-up, Supabase may require email verification
+        // For now, send them to dashboard and let RLS protect data if needed
+        router.push("/dashboard");
+        setIsLoading(false);
     };
 
     return (

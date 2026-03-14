@@ -2,17 +2,38 @@ import Link from "next/link";
 import { Briefcase, CheckCircle2, CircleDashed, Clock, FileText, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export default function InterneeStatusPage() {
-    // Mock state: For demo purposes, we'll pretend the user has a "Pending" application
-    // Change this to null to see the "Not Applied" state
-    const currentApplication = {
-        id: "app_123",
-        role: "Frontend Developer Intern",
-        appliedDate: "Oct 24, 2025",
-        status: "In Review", // "Pending", "In Review", "Accepted", "Rejected"
-        feedback: "Your portfolio looks great! We are currently reviewing your code samples.",
+async function getCurrentApplication() {
+    const supabase = createSupabaseServerClient();
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return null;
+
+    const { data, error } = await supabase
+        .from("internee_applications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error || !data) return null;
+
+    return {
+        id: data.id,
+        role: data.skills || "Internee",
+        appliedDate: data.created_at ? new Date(data.created_at).toLocaleDateString() : "",
+        status: data.status ?? "Pending",
+        feedback: data.message || "Your application is being reviewed.",
     };
+}
+
+export default async function InterneeStatusPage() {
+    const currentApplication = await getCurrentApplication();
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 max-w-5xl mx-auto flex flex-col h-full">
