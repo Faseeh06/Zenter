@@ -8,26 +8,69 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+
+function getYoutubeThumbnailUrl(videoUrl: string): string | null {
+    const m = videoUrl?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    return m ? `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg` : null;
+}
 
 export default function AddVideoPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsLoading(true);
+        setError(null);
 
-        // Mock network request to "save" video
-        setTimeout(() => {
+        const formData = new FormData(e.currentTarget);
+        const title = formData.get("title") as string;
+        const description = formData.get("description") as string;
+        const videoUrl = formData.get("url") as string;
+        const customThumb = (formData.get("thumbnail") as string)?.trim() || null;
+        // Use custom thumbnail if provided, otherwise use YouTube thumbnail for YouTube URLs
+        const thumbnailUrl = customThumb || getYoutubeThumbnailUrl(videoUrl) || null;
+
+        const supabase = createSupabaseBrowserClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            setError("You must be logged in to add a video.");
             setIsLoading(false);
-            // Automatically navigate back to videos lists
-            router.push("/dashboard/videos");
-        }, 1200);
+            return;
+        }
+
+        // Ensure profile exists (fixes FK if user signed up before trigger or trigger missed)
+        await supabase.from("profiles").upsert(
+            {
+                id: user.id,
+                full_name: user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? null,
+                avatar_url: user.user_metadata?.avatar_url ?? null,
+            },
+            { onConflict: "id" }
+        );
+
+        const { error: insertError } = await supabase.from("videos").insert({
+            title,
+            description: description || null,
+            video_url: videoUrl,
+            thumbnail_url: thumbnailUrl,
+            created_by: user.id,
+        });
+
+        if (insertError) {
+            setError(insertError.message);
+            setIsLoading(false);
+            return;
+        }
+
+        router.push("/dashboard/videos");
+        setIsLoading(false);
     };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 max-w-3xl mx-auto pb-10">
-            {/* Back Navigation */}
             <Button asChild variant="ghost" size="sm" className="hover:bg-foreground/5 -ml-3 mb-4">
                 <Link href="/dashboard/videos">
                     <ArrowLeft className="w-4 h-4 mr-2" />
@@ -35,7 +78,6 @@ export default function AddVideoPage() {
                 </Link>
             </Button>
 
-            {/* Header */}
             <div>
                 <span className="inline-flex items-center gap-2 text-xs font-mono text-muted-foreground uppercase tracking-widest mb-3">
                     <VideoIcon className="w-4 h-4" />
@@ -45,19 +87,25 @@ export default function AddVideoPage() {
                     Add New Video
                 </h1>
                 <p className="text-muted-foreground">
-                    Upload a new lecture or attach an external URL to the learning library.
+                    Add a video by URL (e.g. YouTube). Learners can track progress and mark as complete.
                 </p>
             </div>
 
             <div className="p-6 md:p-8 rounded-2xl border border-foreground/10 bg-background/50 backdrop-blur-md relative overflow-hidden">
-                {/* Decorative corner */}
                 <div className="absolute top-0 right-0 w-24 h-24 border-b border-l border-foreground/5 pointer-events-none" />
 
                 <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
+                    {error && (
+                        <div className="p-4 text-sm bg-destructive/10 text-destructive border border-destructive/20 rounded-none font-mono">
+                            {error}
+                        </div>
+                    )}
+
                     <div className="space-y-3">
                         <Label htmlFor="title" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Video Title</Label>
                         <Input
                             id="title"
+                            name="title"
                             placeholder="e.g. Introduction to React Hooks"
                             required
                             disabled={isLoading}
@@ -69,39 +117,11 @@ export default function AddVideoPage() {
                         <Label htmlFor="description" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Description</Label>
                         <Textarea
                             id="description"
-                            placeholder="Provide a brief summary of what learners will get out of this module..."
-                            required
+                            name="description"
+                            placeholder="Brief summary of what learners will get out of this video..."
                             disabled={isLoading}
                             className="bg-transparent border-foreground/20 min-h-[120px] rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground resize-y"
                         />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                            <Label htmlFor="category" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Category</Label>
-                            <select
-                                id="category"
-                                required
-                                disabled={isLoading}
-                                className="flex h-14 w-full bg-transparent border border-foreground/20 px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm text-foreground appearance-none rounded-none"
-                            >
-                                <option value="Frontend" className="bg-background">Frontend</option>
-                                <option value="Backend" className="bg-background">Backend</option>
-                                <option value="UI/UX" className="bg-background">UI/UX</option>
-                                <option value="Career" className="bg-background">Career</option>
-                            </select>
-                        </div>
-
-                        <div className="space-y-3">
-                            <Label htmlFor="duration" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Duration (approx)</Label>
-                            <Input
-                                id="duration"
-                                placeholder="e.g. 45m or 1h 20m"
-                                required
-                                disabled={isLoading}
-                                className="bg-transparent border-foreground/20 h-14 rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground"
-                            />
-                        </div>
                     </div>
 
                     <div className="space-y-3">
@@ -110,13 +130,27 @@ export default function AddVideoPage() {
                             <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
                                 id="url"
+                                name="url"
                                 type="url"
-                                placeholder="https://youtube.com/watch?v=..."
+                                placeholder="https://youtube.com/watch?v=... or https://youtu.be/..."
                                 required
                                 disabled={isLoading}
                                 className="pl-11 bg-transparent border-foreground/20 h-14 rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground"
                             />
                         </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <Label htmlFor="thumbnail" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Thumbnail URL (optional)</Label>
+                        <Input
+                            id="thumbnail"
+                            name="thumbnail"
+                            type="url"
+                            placeholder="Leave empty to use the YouTube video thumbnail"
+                            disabled={isLoading}
+                            className="bg-transparent border-foreground/20 h-14 rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground"
+                        />
+                        <p className="text-xs text-muted-foreground">For YouTube links, the video&apos;s thumbnail is used automatically if you leave this blank.</p>
                     </div>
 
                     <div className="pt-4 flex justify-end gap-4 border-t border-foreground/10 mt-8 pt-8">

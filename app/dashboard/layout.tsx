@@ -3,7 +3,8 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutDashboard, PlaySquare, FolderDot, Briefcase, Settings, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { useEffect, useState } from "react";
+import { LayoutDashboard, PlaySquare, FolderDot, Briefcase, Settings, LogOut, ShieldCheck } from "lucide-react";
 
 import {
     Sidebar,
@@ -21,10 +22,11 @@ import {
     SidebarInset
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-const navItems = [
+type NavItem = { title: string; icon: React.ComponentType<{ className?: string }>; href: string };
+const baseNavItems: NavItem[] = [
     { title: "Overview", icon: LayoutDashboard, href: "/dashboard" },
     { title: "My Videos", icon: PlaySquare, href: "/dashboard/videos" },
     { title: "My Projects", icon: FolderDot, href: "/dashboard/projects" },
@@ -32,8 +34,48 @@ const navItems = [
     { title: "Settings", icon: Settings, href: "/dashboard/settings" },
 ];
 
+function LogOutButton() {
+    return (
+        <SidebarMenuButton
+            asChild
+            className="w-full justify-between hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+        >
+            <Link href="/login" className="flex items-center gap-3" onClick={async (e) => {
+                e.preventDefault();
+                const supabase = createSupabaseBrowserClient();
+                await supabase.auth.signOut();
+                window.location.href = "/login";
+            }}>
+                <span className="flex items-center gap-3">
+                    <LogOut className="w-4 h-4" />
+                    <span>Log out</span>
+                </span>
+            </Link>
+        </SidebarMenuButton>
+    );
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
+    const [profile, setProfile] = useState<{ full_name: string | null; avatar_url: string | null; role: string | null } | null>(null);
+
+    useEffect(() => {
+        const supabase = createSupabaseBrowserClient();
+        const load = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { data: p } = await supabase.from("profiles").select("full_name, avatar_url, role").eq("id", user.id).single();
+            setProfile(p ?? { full_name: user.email?.split("@")[0] ?? "User", avatar_url: null, role: null });
+        };
+        load();
+    }, []);
+
+    const navItems: NavItem[] = profile?.role === "admin"
+        ? [...baseNavItems, { title: "Admin", icon: ShieldCheck, href: "/dashboard/admin/applications" }]
+        : baseNavItems;
+
+    const displayName = profile?.full_name?.trim() || "User";
+    const initials = displayName.split(/\s+/).map((n) => n[0]).slice(0, 2).join("").toUpperCase() || "U";
 
     return (
         <SidebarProvider>
@@ -68,7 +110,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                                     : "hover:bg-foreground/5 text-muted-foreground hover:text-foreground"
                                                     }`}
                                             >
-                                                <Link href={item.href} className="flex items-center gap-3 relative z-10 w-full py-1">
+                                                                <Link href={item.href} className="flex items-center gap-3 relative z-10 w-full py-1">
                                                     {pathname === item.href && (
                                                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-foreground rounded-r-full -ml-2" />
                                                     )}
@@ -85,17 +127,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <SidebarFooter className="p-4 border-t border-foreground/10">
                         <SidebarMenu>
                             <SidebarMenuItem>
-                                <SidebarMenuButton
-                                    asChild
-                                    className="w-full justify-between hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
-                                >
-                                    <Link href="/login" className="flex items-center gap-3">
-                                        <span className="flex items-center gap-3">
-                                            <LogOut className="w-4 h-4" />
-                                            <span>Log out</span>
-                                        </span>
-                                    </Link>
-                                </SidebarMenuButton>
+                                <LogOutButton />
                             </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarFooter>
@@ -116,12 +148,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <div className="flex items-center gap-4">
                             <ThemeToggle />
                             <div className="text-right hidden sm:block">
-                                <p className="text-sm font-medium leading-none">John Doe</p>
+                                <p className="text-sm font-medium leading-none">{displayName}</p>
                                 <p className="text-[10px] uppercase tracking-widest font-mono text-muted-foreground mt-1">Free Tier</p>
                             </div>
                             <Avatar className="h-10 w-10 border-2 border-foreground/10 cursor-pointer hover:border-foreground/30 transition-colors shadow-sm">
-                                <AvatarImage src="" alt="User avatar" />
-                                <AvatarFallback className="bg-gradient-to-br from-foreground/10 to-foreground/5 font-display text-foreground">JD</AvatarFallback>
+                                <AvatarImage src={profile?.avatar_url ?? ""} alt="User avatar" />
+                                <AvatarFallback className="bg-gradient-to-br from-foreground/10 to-foreground/5 font-display text-foreground">{initials}</AvatarFallback>
                             </Avatar>
                         </div>
                     </header>

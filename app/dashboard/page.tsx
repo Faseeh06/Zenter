@@ -3,79 +3,92 @@ import { PlusCircle, Search, Laptop, MonitorPlay, FolderKanban, Briefcase, Chevr
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const stats = [
-    {
-        title: "Videos Watched",
-        value: "12",
-        icon: MonitorPlay,
-        iconColor: "text-blue-500",
-        iconBg: "bg-blue-500/10",
-        description: "Across 3 different skills",
-    },
-    {
-        title: "Projects Submitted",
-        value: "2",
-        icon: FolderKanban,
-        iconColor: "text-purple-500",
-        iconBg: "bg-purple-500/10",
-        description: "Last submission 2 days ago",
-    },
-    {
-        title: "Application Status",
-        value: "Pending",
-        icon: Briefcase,
-        iconColor: "text-orange-500",
-        iconBg: "bg-orange-500/10",
-        description: "Reviewed within 48 hours",
-    },
+async function getDashboardData() {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const [profileRes, videosWatchedRes, projectsRes, applicationRes, recentProgressRes] = await Promise.all([
+        supabase.from("profiles").select("full_name").eq("id", user.id).single(),
+        supabase.from("video_progress").select("*", { count: "exact", head: true }).eq("user_id", user.id).in("status", ["in_progress", "completed"]),
+        supabase.from("projects").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+        supabase.from("internee_applications").select("status").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        supabase
+            .from("video_progress")
+            .select("id, status, watched_duration, updated_at, video_id, videos(id, title)")
+            .eq("user_id", user.id)
+            .order("updated_at", { ascending: false })
+            .limit(3),
+    ]);
+
+    const fullName = profileRes.data?.full_name?.trim() || "User";
+    const videosCount = videosWatchedRes.count ?? 0;
+    const projectsCount = projectsRes.count ?? 0;
+    const appStatus = applicationRes.data?.status ?? "—";
+    const recentRows = recentProgressRes.data ?? [];
+
+    const recentVideos = recentRows.map((row: { id: string; status: string; watched_duration: number; updated_at: string; video_id: string; videos: { id: string; title: string } | null }) => {
+        const title = row.videos?.title ?? "Video";
+        const progress = row.status === "completed" ? 100 : row.status === "in_progress" ? 50 : 0;
+        const updated = row.updated_at ? new Date(row.updated_at) : null;
+        const lastWatched = updated ? (Date.now() - updated.getTime() < 86400000 ? "Today" : updated.toLocaleDateString()) : "—";
+        return { id: row.video_id ?? row.videos?.id ?? row.id, title, progress, lastWatched };
+    });
+
+    return {
+        fullName,
+        stats: [
+            { title: "Videos Watched", value: String(videosCount), description: "Across your learning journey" },
+            { title: "Projects Submitted", value: String(projectsCount), description: projectsCount > 0 ? "In your portfolio" : "Add your first project" },
+            { title: "Application Status", value: appStatus, description: appStatus === "pending" ? "Reviewed within 48 hours" : appStatus === "—" ? "Not applied yet" : "Updated" },
+        ],
+        recentVideos,
+    };
+}
+
+const statIcons = [
+    { icon: MonitorPlay, iconColor: "text-blue-500", iconBg: "bg-blue-500/10" },
+    { icon: FolderKanban, iconColor: "text-purple-500", iconBg: "bg-purple-500/10" },
+    { icon: Briefcase, iconColor: "text-orange-500", iconBg: "bg-orange-500/10" },
 ];
 
-const recentVideos = [
-    {
-        title: "Next.js 14 App Router Fundamentals",
-        course: "Full Stack Development",
-        progress: 75,
-        lastWatched: "2 hours ago",
-    },
-    {
-        title: "Advanced React Patterns",
-        course: "Frontend Engineering",
-        progress: 30,
-        lastWatched: "Yesterday",
-    },
-    {
-        title: "Intro to Supabase Auth & DB",
-        course: "Backend & Infrastructure",
-        progress: 100,
-        lastWatched: "3 days ago",
-    },
-];
+export default async function DashboardOverview() {
+    const data = await getDashboardData();
+    if (!data) {
+        return (
+            <div className="space-y-8 animate-in fade-in duration-500">
+                <p className="text-muted-foreground">Please sign in to see your dashboard.</p>
+            </div>
+        );
+    }
 
-export default function DashboardOverview() {
+    const { fullName, stats, recentVideos } = data;
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Header */}
             <div className="relative">
                 <div className="absolute top-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -ml-20 -mt-20 pointer-events-none" />
                 <h2 className="text-3xl md:text-4xl font-display tracking-tight mb-2">
-                    Welcome back, <span className="bg-gradient-to-r from-foreground to-foreground/50 bg-clip-text text-transparent">John Doe</span>
+                    Welcome back, <span className="bg-gradient-to-r from-foreground to-foreground/50 bg-clip-text text-transparent">{fullName}</span>
                 </h2>
                 <p className="text-muted-foreground">
                     Here is what is happening with your learning journey today.
                 </p>
             </div>
 
-            {/* Stats Cards */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {stats.map((stat) => (
+                {stats.map((stat, i) => {
+                    const Icon = statIcons[i].icon;
+                    return (
                     <Card key={stat.title} className="bg-background/50 border-foreground/10 rounded-xl hover:-translate-y-1 hover:shadow-xl hover:shadow-foreground/5 transition-all duration-300 group">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground font-mono">
                                 {stat.title}
                             </CardTitle>
-                            <div className={`p-2 rounded-lg ${stat.iconBg} transition-colors group-hover:bg-foreground/10`}>
-                                <stat.icon className={`h-4 w-4 ${stat.iconColor} transition-transform group-hover:scale-110`} />
+                            <div className={`p-2 rounded-lg ${statIcons[i].iconBg} transition-colors group-hover:bg-foreground/10`}>
+                                <Icon className={`h-4 w-4 ${statIcons[i].iconColor} transition-transform group-hover:scale-110`} />
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -85,11 +98,11 @@ export default function DashboardOverview() {
                             </p>
                         </CardContent>
                     </Card>
-                ))}
+                    );
+                })}
             </div>
 
             <div className="grid gap-6 md:grid-cols-7">
-                {/* Recent Video Progress */}
                 <Card className="md:col-span-4 lg:col-span-5 bg-background/50 border-foreground/10 rounded-xl flex flex-col relative overflow-hidden group/card shadow-sm">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-foreground/5 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none group-hover/card:bg-foreground/10 transition-colors" />
                     <CardHeader>
@@ -99,37 +112,37 @@ export default function DashboardOverview() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6 flex-1 z-10">
-                        {recentVideos.map((video) => (
-                            <div key={video.title} className="flex items-center gap-4 group cursor-pointer p-2 rounded-lg hover:bg-foreground/[0.02] transition-colors -mx-2">
-                                <div className="hidden sm:flex h-12 w-16 bg-foreground/5 rounded font-display text-xs items-center justify-center shrink-0 border border-foreground/10 group-hover:bg-foreground/10 group-hover:border-foreground/20 transition-all group-hover:shadow-sm relative overflow-hidden">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-transparent to-foreground/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    <PlayIcon />
-                                </div>
-                                <div className="flex-1 space-y-1">
-                                    <p className="text-sm font-medium leading-none group-hover:underline decoration-foreground/50 underline-offset-4">
-                                        {video.title}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground font-mono">
-                                        {video.course} • {video.lastWatched}
-                                    </p>
-                                    <Progress value={video.progress} className="h-1 bg-foreground/10 mt-2" />
-                                </div>
-                                <Button variant="ghost" size="icon" className="shrink-0 rounded-full w-8 h-8 group-hover:bg-foreground/5 group-hover:translate-x-1 transition-all">
-                                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
-                                </Button>
-                            </div>
-                        ))}
+                        {recentVideos.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No video progress yet. Browse videos to get started.</p>
+                        ) : (
+                            recentVideos.map((video) => (
+                                <Link key={video.id} href={`/dashboard/videos/${video.id}`} className="flex items-center gap-4 group cursor-pointer p-2 rounded-lg hover:bg-foreground/[0.02] transition-colors -mx-2 block">
+                                    <div className="hidden sm:flex h-12 w-16 bg-foreground/5 rounded font-display text-xs items-center justify-center shrink-0 border border-foreground/10 group-hover:bg-foreground/10 group-hover:border-foreground/20 transition-all group-hover:shadow-sm relative overflow-hidden">
+                                        <PlayIcon />
+                                    </div>
+                                    <div className="flex-1 space-y-1">
+                                        <p className="text-sm font-medium leading-none group-hover:underline decoration-foreground/50 underline-offset-4">
+                                            {video.title}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground font-mono">
+                                            {video.lastWatched}
+                                        </p>
+                                        <Progress value={video.progress} className="h-1 bg-foreground/10 mt-2" />
+                                    </div>
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0" />
+                                </Link>
+                            ))
+                        )}
                     </CardContent>
                 </Card>
 
-                {/* Quick Actions */}
                 <Card className="md:col-span-3 lg:col-span-2 bg-background/50 border-foreground/10 rounded-xl flex flex-col shadow-sm">
                     <CardHeader>
                         <CardTitle className="font-display text-xl">Quick Actions</CardTitle>
                         <CardDescription>What do you want to do?</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-col gap-3">
-                        <Button asChild className="w-full justify-start h-12 rounded-lg bg-foreground hover:bg-foreground/90 text-background group transition-all hover:shadow-[0_0_20px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+                        <Button asChild className="w-full justify-start h-12 rounded-lg bg-foreground hover:bg-foreground/90 text-background group transition-all">
                             <Link href="/dashboard/projects/new">
                                 <PlusCircle className="mr-3 h-4 w-4 group-hover:scale-110 transition-transform" />
                                 Add New Project

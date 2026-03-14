@@ -10,7 +10,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-export default function AddProjectPage() {
+type Project = {
+    id: string;
+    title: string;
+    description: string | null;
+    live_url: string | null;
+    github_url: string | null;
+    thumbnail_url: string | null;
+};
+
+export function EditProjectForm({ project }: { project: Project }) {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -28,54 +37,32 @@ export default function AddProjectPage() {
         const thumbnailUrl = (formData.get("thumbnail") as string)?.trim() || null;
 
         const supabase = createSupabaseBrowserClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            setError("You must be logged in to add a project.");
-            setIsLoading(false);
-            return;
-        }
+        const { error: updateError } = await supabase
+            .from("projects")
+            .update({ title, description, github_url: githubUrl, live_url: demoUrl, thumbnail_url: thumbnailUrl })
+            .eq("id", project.id);
 
-        const { error: insertError } = await supabase.from("projects").insert({
-            user_id: user.id,
-            title,
-            description,
-            github_url: githubUrl,
-            live_url: demoUrl,
-            thumbnail_url: thumbnailUrl,
-        });
-
-        if (insertError) {
-            setError(insertError.message);
+        if (updateError) {
+            setError(updateError.message);
             setIsLoading(false);
             return;
         }
 
         router.push("/dashboard/projects");
+        router.refresh();
         setIsLoading(false);
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 max-w-3xl mx-auto pb-10">
-            {/* Back Navigation */}
-            <Button asChild variant="ghost" size="sm" className="hover:bg-foreground/5 -ml-3 mb-4">
-                <Link href="/dashboard/projects">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Projects
-                </Link>
-            </Button>
-
-            {/* Header */}
-            <div>
+        <div>
+            <div className="mb-6">
                 <span className="inline-flex items-center gap-2 text-xs font-mono text-muted-foreground uppercase tracking-widest mb-3">
                     <FolderPlus className="w-4 h-4" />
-                    Showcase Management
+                    Edit Project
                 </span>
                 <h1 className="text-3xl md:text-4xl font-display tracking-tight mb-2">
-                    Add New Project
+                    Update project
                 </h1>
-                <p className="text-muted-foreground">
-                    Submit your latest work. Approved projects will be featured securely in your public portfolio and across the Zenter platform.
-                </p>
             </div>
 
             <div className="p-6 md:p-8 rounded-2xl border border-foreground/10 bg-background/50 backdrop-blur-md relative overflow-hidden">
@@ -87,70 +74,72 @@ export default function AddProjectPage() {
                             {error}
                         </div>
                     )}
+
                     <div className="space-y-3">
-                        <Label htmlFor="title" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Project Title</Label>
+                        <Label htmlFor="title">Project Title</Label>
                         <Input
                             id="title"
                             name="title"
-                            placeholder="e.g. Next.js Analytics Dashboard"
+                            defaultValue={project.title}
                             required
                             disabled={isLoading}
-                            className="bg-transparent border-foreground/20 h-14 rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground"
+                            className="bg-transparent border-foreground/20 h-14 rounded-none"
                         />
                     </div>
 
                     <div className="space-y-3">
-                        <Label htmlFor="description" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Description</Label>
+                        <Label htmlFor="description">Description</Label>
                         <Textarea
                             id="description"
                             name="description"
-                            placeholder="Provide a detailed explanation about the problem this project solves, your tech stack, and what you learned..."
+                            defaultValue={project.description ?? ""}
                             disabled={isLoading}
-                            className="bg-transparent border-foreground/20 min-h-[140px] rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground resize-y"
+                            className="bg-transparent border-foreground/20 min-h-[140px] rounded-none resize-y"
                         />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-3">
-                            <Label htmlFor="github" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">GitHub Repository</Label>
+                            <Label htmlFor="github">GitHub Repository</Label>
                             <div className="relative">
                                 <Github className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                 <Input
                                     id="github"
                                     name="github"
                                     type="url"
+                                    defaultValue={project.github_url ?? ""}
                                     placeholder="https://github.com/..."
                                     disabled={isLoading}
-                                    className="pl-11 bg-transparent border-foreground/20 h-14 rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground"
+                                    className="pl-11 bg-transparent border-foreground/20 h-14 rounded-none"
                                 />
                             </div>
                         </div>
-
                         <div className="space-y-3">
-                            <Label htmlFor="demo" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Live Demo</Label>
+                            <Label htmlFor="demo">Live Demo</Label>
                             <div className="relative">
                                 <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                 <Input
                                     id="demo"
                                     name="demo"
                                     type="url"
+                                    defaultValue={project.live_url ?? ""}
                                     placeholder="https://..."
                                     disabled={isLoading}
-                                    className="pl-11 bg-transparent border-foreground/20 h-14 rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground"
+                                    className="pl-11 bg-transparent border-foreground/20 h-14 rounded-none"
                                 />
                             </div>
                         </div>
                     </div>
 
                     <div className="space-y-3">
-                        <Label htmlFor="thumbnail" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Thumbnail URL (optional)</Label>
+                        <Label htmlFor="thumbnail">Thumbnail URL (optional)</Label>
                         <Input
                             id="thumbnail"
                             name="thumbnail"
                             type="url"
-                            placeholder="https://..."
+                            defaultValue={project.thumbnail_url ?? ""}
                             disabled={isLoading}
-                            className="bg-transparent border-foreground/20 h-14 rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground"
+                            className="bg-transparent border-foreground/20 h-14 rounded-none"
                         />
                     </div>
 
@@ -160,21 +149,21 @@ export default function AddProjectPage() {
                             variant="outline"
                             disabled={isLoading}
                             onClick={() => router.push("/dashboard/projects")}
-                            className="h-12 rounded-full px-8 border-foreground/20 hover:bg-foreground/5 font-mono text-sm"
+                            className="h-12 rounded-full px-8"
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="h-12 rounded-full px-8 bg-foreground text-background hover:bg-foreground/90 font-mono text-sm"
+                            className="h-12 rounded-full px-8 bg-foreground text-background hover:bg-foreground/90"
                         >
                             {isLoading ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     Saving
                                 </>
-                            ) : "Save Project"}
+                            ) : "Save changes"}
                         </Button>
                     </div>
                 </form>

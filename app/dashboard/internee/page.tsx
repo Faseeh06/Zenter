@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 async function getCurrentApplication() {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
 
     const {
         data: { user },

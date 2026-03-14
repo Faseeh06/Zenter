@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, User, Key, Bell, Shield, UploadCloud, Github, Twitter, Linkedin, ExternalLink, Paintbrush, Moon, Sun, Monitor } from "lucide-react";
+import { Loader2, User, Key, Bell, Shield, Github, Linkedin, ExternalLink, Paintbrush, Moon, Sun, Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,28 +10,142 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function SettingsPage() {
-    const [isLoading, setIsLoading] = useState(false);
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
 
+    const [fullName, setFullName] = useState("");
+    const [email, setEmail] = useState("");
+    const [bio, setBio] = useState("");
+    const [avatarUrl, setAvatarUrl] = useState("");
+    const [websiteUrl, setWebsiteUrl] = useState("");
+    const [githubUrl, setGithubUrl] = useState("");
+    const [linkedinUrl, setLinkedinUrl] = useState("");
+
+    const [notifPlatform, setNotifPlatform] = useState(true);
+    const [notifTips, setNotifTips] = useState(true);
+    const [notifInternship, setNotifInternship] = useState(true);
+
+    const [isSavingAccount, setIsSavingAccount] = useState(false);
+    const [isSavingNotif, setIsSavingNotif] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+    const NOTIF_KEYS = { platform: "zenter_notif_platform", tips: "zenter_notif_tips", internship: "zenter_notif_internship" };
+
     useEffect(() => {
         setMounted(true);
+        const loadProfile = async () => {
+            const supabase = createSupabaseBrowserClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            setEmail(user.email ?? "");
+            const { data: profile } = await supabase.from("profiles").select("full_name, bio, avatar_url, website_url, github_url, linkedin_url").eq("id", user.id).single();
+            if (profile) {
+                setFullName(profile.full_name ?? "");
+                setBio(profile.bio ?? "");
+                setAvatarUrl(profile.avatar_url ?? "");
+                setWebsiteUrl((profile as { website_url?: string }).website_url ?? "");
+                setGithubUrl((profile as { github_url?: string }).github_url ?? "");
+                setLinkedinUrl((profile as { linkedin_url?: string }).linkedin_url ?? "");
+            }
+        };
+        loadProfile();
     }, []);
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    useEffect(() => {
+        if (!mounted) return;
+        try {
+            setNotifPlatform(localStorage.getItem(NOTIF_KEYS.platform) !== "false");
+            setNotifTips(localStorage.getItem(NOTIF_KEYS.tips) !== "false");
+            setNotifInternship(localStorage.getItem(NOTIF_KEYS.internship) !== "false");
+        } catch (_) {}
+    }, [mounted]);
+
+    const initials = fullName
+        ? fullName
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((n) => n[0]?.toUpperCase())
+            .join("")
+        : "U";
+
+    const handleProfileSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setIsLoading(true);
+        setIsSavingProfile(true);
         setSuccessMsg(null);
 
-        // Mock network request
-        setTimeout(() => {
-            setIsLoading(false);
-            setSuccessMsg("Settings saved successfully.");
-            setTimeout(() => setSuccessMsg(null), 3000);
-        }, 1200);
+        const supabase = createSupabaseBrowserClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            setIsSavingProfile(false);
+            return;
+        }
+
+        const { error } = await supabase.from("profiles").update({
+            full_name: fullName,
+            bio,
+            avatar_url: avatarUrl || null,
+            website_url: websiteUrl?.trim() || null,
+            github_url: githubUrl?.trim() || null,
+            linkedin_url: linkedinUrl?.trim() || null,
+        }).eq("id", user.id);
+
+        setIsSavingProfile(false);
+        if (error) {
+            setErrorMsg(error.message);
+            return;
+        }
+        setSuccessMsg("Profile saved successfully.");
+        setErrorMsg(null);
+        setTimeout(() => setSuccessMsg(null), 3000);
+    };
+
+    const handleAccountSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setErrorMsg(null);
+        setSuccessMsg(null);
+        const form = e.currentTarget;
+        const newPassword = (form.querySelector("#newPassword") as HTMLInputElement)?.value;
+        const confirmNewPassword = (form.querySelector("#confirmNewPassword") as HTMLInputElement)?.value;
+        if (!newPassword || newPassword.length < 6) {
+            setErrorMsg("New password must be at least 6 characters.");
+            return;
+        }
+        if (newPassword !== confirmNewPassword) {
+            setErrorMsg("New password and confirmation do not match.");
+            return;
+        }
+        setIsSavingAccount(true);
+        const supabase = createSupabaseBrowserClient();
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        setIsSavingAccount(false);
+        if (error) {
+            setErrorMsg(error.message);
+            return;
+        }
+        setSuccessMsg("Password updated successfully.");
+        (form.querySelector("#currentPassword") as HTMLInputElement).value = "";
+        (form.querySelector("#newPassword") as HTMLInputElement).value = "";
+        (form.querySelector("#confirmNewPassword") as HTMLInputElement).value = "";
+        setTimeout(() => setSuccessMsg(null), 3000);
+    };
+
+    const handleSaveNotifications = () => {
+        try {
+            localStorage.setItem(NOTIF_KEYS.platform, String(notifPlatform));
+            localStorage.setItem(NOTIF_KEYS.tips, String(notifTips));
+            localStorage.setItem(NOTIF_KEYS.internship, String(notifInternship));
+            setIsSavingNotif(true);
+            setSuccessMsg("Notification preferences saved.");
+            setTimeout(() => { setSuccessMsg(null); setIsSavingNotif(false); }, 3000);
+        } catch (_) {
+            setErrorMsg("Could not save preferences.");
+        }
     };
 
     return (
@@ -66,44 +180,49 @@ export default function SettingsPage() {
 
                 {/* Profile Tab */}
                 <TabsContent value="profile" className="space-y-8 focus-visible:outline-none focus-visible:ring-0">
-                    <form onSubmit={handleSubmit} className="p-6 md:p-8 rounded-2xl border border-foreground/10 bg-background/50 backdrop-blur-md relative overflow-hidden">
+                    <form onSubmit={handleProfileSubmit} className="p-6 md:p-8 rounded-2xl border border-foreground/10 bg-background/50 backdrop-blur-md relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-24 h-24 border-b border-l border-foreground/5 pointer-events-none bg-foreground/[0.02]" />
 
                         <div className="space-y-8 relative z-10">
                             <div className="flex items-center gap-6 pb-8 border-b border-foreground/10">
-                                <Avatar className="w-24 h-24 border-2 border-foreground/10">
-                                    <AvatarImage src="" />
-                                    <AvatarFallback className="text-2xl font-display bg-foreground/5">JD</AvatarFallback>
+                                <Avatar className="w-24 h-24 border-2 border-foreground/10 shrink-0">
+                                    <AvatarImage src={avatarUrl || undefined} alt="Profile" />
+                                    <AvatarFallback className="text-2xl font-display bg-foreground/5">{initials}</AvatarFallback>
                                 </Avatar>
-                                <div className="space-y-3">
+                                <div className="space-y-3 flex-1 min-w-0">
                                     <h3 className="font-display text-xl tracking-tight">Profile Picture</h3>
-                                    <div className="flex flex-wrap gap-3">
-                                        <Button type="button" variant="outline" className="h-10 rounded-full border-foreground/20 hover:bg-foreground/5 font-mono text-xs">
-                                            <UploadCloud className="w-4 h-4 mr-2" />
-                                            Upload New
-                                        </Button>
-                                        <Button type="button" variant="ghost" className="h-10 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive font-mono text-xs">
-                                            Remove
-                                        </Button>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="avatarUrl" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Image URL</Label>
+                                        <Input
+                                            id="avatarUrl"
+                                            type="url"
+                                            placeholder="https://example.com/your-photo.jpg"
+                                            value={avatarUrl}
+                                            onChange={(e) => setAvatarUrl(e.target.value)}
+                                            className="bg-transparent border-foreground/20 h-10 rounded-none font-mono text-sm"
+                                        />
+                                        <div className="flex flex-wrap gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-8 rounded-full border-foreground/20 hover:bg-foreground/5 font-mono text-xs"
+                                                onClick={() => setAvatarUrl("")}
+                                            >
+                                                Remove photo
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-3">
-                                    <Label htmlFor="firstName" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">First Name</Label>
+                                    <Label htmlFor="fullName" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Full Name</Label>
                                     <Input
-                                        id="firstName"
-                                        defaultValue="John"
-                                        required
-                                        className="bg-transparent border-foreground/20 h-14 rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground"
-                                    />
-                                </div>
-                                <div className="space-y-3">
-                                    <Label htmlFor="lastName" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Last Name</Label>
-                                    <Input
-                                        id="lastName"
-                                        defaultValue="Doe"
+                                        id="fullName"
+                                        value={fullName}
+                                        onChange={(e) => setFullName(e.target.value)}
                                         required
                                         className="bg-transparent border-foreground/20 h-14 rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground"
                                     />
@@ -111,11 +230,12 @@ export default function SettingsPage() {
                             </div>
 
                             <div className="space-y-3">
-                                <Label htmlFor="emailUpdate" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Public Email</Label>
+                                <Label htmlFor="emailUpdate" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Account Email</Label>
                                 <Input
                                     id="emailUpdate"
                                     type="email"
-                                    defaultValue="demo@zenter.com"
+                                    value={email}
+                                    disabled
                                     className="bg-transparent border-foreground/20 h-14 rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground"
                                 />
                             </div>
@@ -124,7 +244,8 @@ export default function SettingsPage() {
                                 <Label htmlFor="bio" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Short Bio</Label>
                                 <Textarea
                                     id="bio"
-                                    defaultValue="Full-stack developer passionate about building excellent software that improves the lives of those around me."
+                                    value={bio}
+                                    onChange={(e) => setBio(e.target.value)}
                                     className="bg-transparent border-foreground/20 min-h-[120px] rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground resize-y"
                                 />
                                 <p className="text-xs text-muted-foreground">Brief description for your showcase portfolio. HTML is not allowed.</p>
@@ -141,6 +262,8 @@ export default function SettingsPage() {
                                         <div className="flex-1 space-y-2">
                                             <Input
                                                 placeholder="https://yoursite.com"
+                                                value={websiteUrl}
+                                                onChange={(e) => setWebsiteUrl(e.target.value)}
                                                 className="bg-transparent border-foreground/20 h-10 rounded-sm focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground w-full font-mono text-sm"
                                             />
                                         </div>
@@ -152,7 +275,8 @@ export default function SettingsPage() {
                                         <div className="flex-1 space-y-2">
                                             <Input
                                                 placeholder="https://github.com/username"
-                                                defaultValue="https://github.com/johndoe"
+                                                value={githubUrl}
+                                                onChange={(e) => setGithubUrl(e.target.value)}
                                                 className="bg-transparent border-foreground/20 h-10 rounded-sm focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground w-full font-mono text-sm"
                                             />
                                         </div>
@@ -164,6 +288,8 @@ export default function SettingsPage() {
                                         <div className="flex-1 space-y-2">
                                             <Input
                                                 placeholder="https://linkedin.com/in/username"
+                                                value={linkedinUrl}
+                                                onChange={(e) => setLinkedinUrl(e.target.value)}
                                                 className="bg-transparent border-foreground/20 h-10 rounded-sm focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground w-full font-mono text-sm"
                                             />
                                         </div>
@@ -172,15 +298,16 @@ export default function SettingsPage() {
                             </div>
 
                             <div className="pt-8 flex flex-col sm:flex-row items-center justify-between border-t border-foreground/10 gap-4">
-                                <div className="text-sm font-mono text-green-500 h-5">
-                                    {successMsg && successMsg}
+                                <div className="flex flex-col gap-1 min-w-0">
+                                    {successMsg && <span className="text-sm font-mono text-green-500">{successMsg}</span>}
+                                    {errorMsg && <span className="text-sm font-mono text-destructive">{errorMsg}</span>}
                                 </div>
                                 <Button
                                     type="submit"
-                                    disabled={isLoading}
+                                    disabled={isSavingProfile}
                                     className="w-full sm:w-auto h-12 rounded-full px-8 bg-foreground text-background hover:bg-foreground/90 font-mono text-sm"
                                 >
-                                    {isLoading ? (
+                                    {isSavingProfile ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                             Saving changes...
@@ -196,8 +323,14 @@ export default function SettingsPage() {
 
                 {/* Account Tab */}
                 <TabsContent value="account" className="space-y-8 focus-visible:outline-none focus-visible:ring-0">
-                    <form onSubmit={handleSubmit} className="p-6 md:p-8 rounded-2xl border border-foreground/10 bg-background/50 backdrop-blur-md relative overflow-hidden">
+                    <form onSubmit={handleAccountSubmit} className="p-6 md:p-8 rounded-2xl border border-foreground/10 bg-background/50 backdrop-blur-md relative overflow-hidden">
                         <div className="space-y-8">
+                            {(successMsg || errorMsg) && (
+                                <div className="text-sm font-mono">
+                                    {successMsg && <span className="text-green-500">{successMsg}</span>}
+                                    {errorMsg && <span className="text-destructive">{errorMsg}</span>}
+                                </div>
+                            )}
                             <div>
                                 <h3 className="font-display text-xl tracking-tight mb-2">Password</h3>
                                 <p className="text-sm text-muted-foreground">Update the password associated with this account.</p>
@@ -237,10 +370,18 @@ export default function SettingsPage() {
 
                             <div className="pt-4 pb-8 border-b border-foreground/10">
                                 <Button
-                                    type="button"
+                                    type="submit"
+                                    disabled={isSavingAccount}
                                     className="h-10 rounded-full px-6 bg-foreground text-background hover:bg-foreground/90 font-mono text-xs"
                                 >
-                                    Update Password
+                                    {isSavingAccount ? (
+                                        <>
+                                            <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                                            Updating...
+                                        </>
+                                    ) : (
+                                        "Update Password"
+                                    )}
                                 </Button>
                             </div>
 
@@ -270,7 +411,7 @@ export default function SettingsPage() {
                                         <Label className="text-base font-display">Platform Updates</Label>
                                         <p className="text-sm text-muted-foreground">Receive news about the latest platform features.</p>
                                     </div>
-                                    <Switch defaultChecked />
+                                    <Switch checked={notifPlatform} onCheckedChange={setNotifPlatform} />
                                 </div>
 
                                 <div className="flex items-center justify-between gap-4">
@@ -278,7 +419,7 @@ export default function SettingsPage() {
                                         <Label className="text-base font-display">Tips & Tutorials</Label>
                                         <p className="text-sm text-muted-foreground">Advice on getting the most out of your learning journey.</p>
                                     </div>
-                                    <Switch defaultChecked />
+                                    <Switch checked={notifTips} onCheckedChange={setNotifTips} />
                                 </div>
 
                                 <div className="flex items-center justify-between gap-4">
@@ -286,16 +427,19 @@ export default function SettingsPage() {
                                         <Label className="text-base font-display">Internship Alerts</Label>
                                         <p className="text-sm text-muted-foreground">Notifications about your application status changes.</p>
                                     </div>
-                                    <Switch defaultChecked />
+                                    <Switch checked={notifInternship} onCheckedChange={setNotifInternship} />
                                 </div>
                             </div>
 
-                            <div className="pt-4 border-t border-foreground/10 flex justify-end">
+                            <div className="pt-4 border-t border-foreground/10 flex justify-end items-center gap-4">
+                                {successMsg && <span className="text-sm font-mono text-green-500">{successMsg}</span>}
                                 <Button
                                     type="button"
+                                    disabled={isSavingNotif}
+                                    onClick={handleSaveNotifications}
                                     className="h-12 rounded-full px-8 bg-foreground text-background hover:bg-foreground/90 font-mono text-sm"
                                 >
-                                    Save Preferences
+                                    {isSavingNotif ? "Saved" : "Save Preferences"}
                                 </Button>
                             </div>
                         </div>
