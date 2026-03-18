@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, ArrowRight } from "lucide-react";
@@ -11,6 +11,14 @@ import { Label } from "@/components/ui/label";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+    return (
+        <Suspense fallback={<LoginSkeleton />}>
+            <LoginForm />
+        </Suspense>
+    );
+}
+
+function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [isLoading, setIsLoading] = useState(false);
@@ -153,6 +161,23 @@ export default function LoginPage() {
                         </Link>
                     </div>
                 </form>
+            </div>
+        </div>
+    );
+}
+
+function LoginSkeleton() {
+    return (
+        <div className="w-full relative border border-foreground/10 bg-background/50 backdrop-blur-md p-8 lg:p-12 overflow-hidden">
+            <div className="absolute top-0 right-0 w-16 h-16 border-b border-l border-foreground/10" />
+            <div className="absolute bottom-0 left-0 w-16 h-16 border-t border-r border-foreground/10" />
+            <div className="relative z-10 space-y-6">
+                <div className="h-6 w-32 bg-foreground/10 rounded" />
+                <div className="h-10 w-64 bg-foreground/10 rounded" />
+                <div className="h-4 w-80 bg-foreground/10 rounded" />
+                <div className="h-12 w-full bg-foreground/10 rounded" />
+                <div className="h-12 w-full bg-foreground/10 rounded" />
+                <div className="h-12 w-full bg-foreground/10 rounded-full" />
             </div>
         </div>
     );
