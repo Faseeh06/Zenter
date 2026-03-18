@@ -83,14 +83,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* Sidebar */}
                 <Sidebar className="border-r border-foreground/10 bg-background/50 backdrop-blur-md">
                     <SidebarHeader className="p-6">
-                        <Link href="/" className="flex items-center gap-2">
+                        <Link href="/" className="flex items-center gap-3">
                             <Image
-                                src="/logo/full.png"
+                                src="/Logo/Light.png"
                                 alt="Zenter Logo"
-                                width={120}
-                                height={40}
+                                width={80}
+                                height={28}
                                 className="object-contain"
                             />
+                            <span className="font-sans font-semibold tracking-[0.35em] text-[color:#2596be] text-xs uppercase leading-none">
+                                ZENTER
+                            </span>
                         </Link>
                     </SidebarHeader>
                     <SidebarContent>

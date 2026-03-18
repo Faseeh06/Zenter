@@ -44,14 +44,17 @@ export function Navigation() {
             }`}
         >
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href="/" className="flex items-center gap-3 group">
             <Image
-              src="/logo/full.png"
+              src="/Logo/Light.png"
               alt="Zenter Logo"
-              width={isScrolled ? 100 : 120}
-              height={40}
+              width={isScrolled ? 64 : 80}
+              height={28}
               className={`object-contain transition-all duration-500`}
             />
+            <span className="font-sans font-semibold tracking-[0.35em] text-[color:#2596be] text-sm sm:text-base uppercase leading-none">
+              ZENTER
+            </span>
           </Link>
 
           {/* Desktop Navigation */}

@@ -49,14 +49,17 @@ export function FooterSection() {
           <div className="grid grid-cols-2 md:grid-cols-6 gap-12 lg:gap-8">
             {/* Brand Column */}
             <div className="col-span-2">
-              <Link href="/" className="inline-flex items-center gap-2 mb-6">
+              <Link href="/" className="inline-flex items-center gap-3 mb-6">
                 <Image
-                  src="/logo/full.png"
+                  src="/Logo/Light.png"
                   alt="Zenter Logo"
-                  width={120}
-                  height={40}
+                  width={80}
+                  height={28}
                   className="object-contain"
                 />
+                <span className="font-sans font-semibold tracking-[0.35em] text-[color:#2596be] text-sm uppercase leading-none">
+                  ZENTER
+                </span>
               </Link>
 
               <p className="text-muted-foreground leading-relaxed mb-8 max-w-xs">

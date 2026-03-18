@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   title: 'Zenter — Learn. Build. Showcase.',
   description: 'Your all-in-one platform for video learning, internships, and project showcasing. Learn from curated video lectures, build real-world projects, and showcase your work to the world.',
   icons: {
-    icon: '/logo/Small.png',
+    icon: '/Logo/Small.png',
   },
 }
 

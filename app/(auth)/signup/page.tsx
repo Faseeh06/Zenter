@@ -81,14 +81,17 @@ export default function SignUpPage() {
 
             <div className="relative z-10">
                 <div className="mb-10 text-center flex flex-col items-center">
-                    <Link href="/" className="mb-8 inline-block">
+                    <Link href="/" className="mb-8 inline-flex items-center gap-3">
                         <Image
-                            src="/logo/full.png"
+                            src="/Logo/Light.png"
                             alt="Zenter Logo"
-                            width={160}
-                            height={53}
+                            width={96}
+                            height={32}
                             className="object-contain"
                         />
+                        <span className="font-sans font-semibold tracking-[0.35em] text-[color:#2596be] text-sm uppercase leading-none">
+                            ZENTER
+                        </span>
                     </Link>
                     <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground mb-4">
                         <span className="w-8 h-px bg-foreground/30" />
