@@ -16,15 +16,29 @@ function parseYoutubeId(url: string): string | null {
 export default async function VideosPage({
     searchParams,
 }: {
-    searchParams: Promise<{ q?: string }>;
+    searchParams: Promise<{ q?: string; course?: string }>;
 }) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const { q } = await searchParams;
+    const { q, course } = await searchParams;
+    let isAdmin = false;
+    if (user) {
+        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+        isAdmin = profile?.role === "admin";
+    }
 
-    let query = supabase.from("videos").select("id, title, description, video_url, thumbnail_url").order("created_at", { ascending: false });
+    const { data: allCourses } = await supabase.from("videos").select("course").not("course", "is", null);
+    const courseOptions = Array.from(new Set((allCourses ?? []).map((c) => c.course).filter(Boolean))).sort();
+
+    let query = supabase
+        .from("videos")
+        .select("id, title, course, description, video_url, thumbnail_url")
+        .order("created_at", { ascending: false });
     if (q?.trim()) {
         query = query.ilike("title", `%${q.trim()}%`);
+    }
+    if (course?.trim() && course !== "all") {
+        query = query.eq("course", course);
     }
     const { data: videos } = await query;
 
@@ -54,16 +68,18 @@ export default async function VideosPage({
                         Curated content to help you learn, build, and grow your engineering skills.
                     </p>
                 </div>
-                <Button asChild className="rounded-full bg-foreground text-background hover:bg-foreground/90 shrink-0">
-                    <Link href="/dashboard/videos/new">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Video
-                    </Link>
-                </Button>
+                {isAdmin && (
+                    <Button asChild className="rounded-full bg-foreground text-background hover:bg-foreground/90 shrink-0">
+                        <Link href="/dashboard/videos/new">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Video
+                        </Link>
+                    </Button>
+                )}
             </div>
 
             <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-                <VideosSearchForm defaultValue={q} />
+                <VideosSearchForm defaultValue={q} course={course} courses={courseOptions} />
                 <span className="text-sm font-mono text-muted-foreground">{videos?.length ?? 0} videos</span>
             </div>
 
@@ -90,6 +106,13 @@ export default async function VideosPage({
                                     </div>
                                 </div>
                                 <CardContent className="p-5 flex-1 flex flex-col">
+                                    {video.course && (
+                                        <div className="mb-2">
+                                            <Badge variant="secondary" className="bg-background/80 backdrop-blur font-mono border-foreground/10">
+                                                {video.course}
+                                            </Badge>
+                                        </div>
+                                    )}
                                     <h3 className="text-lg font-medium leading-tight mb-2 group-hover:underline decoration-foreground/50 underline-offset-4">
                                         {video.title}
                                     </h3>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Link as LinkIcon, Video as VideoIcon } from "lucide-react";
@@ -19,6 +19,21 @@ export default function AddVideoPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isAllowed, setIsAllowed] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        const checkRole = async () => {
+            const supabase = createSupabaseBrowserClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                setIsAllowed(false);
+                return;
+            }
+            const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+            setIsAllowed(profile?.role === "admin");
+        };
+        checkRole();
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -27,6 +42,7 @@ export default function AddVideoPage() {
 
         const formData = new FormData(e.currentTarget);
         const title = formData.get("title") as string;
+        const course = (formData.get("course") as string)?.trim() || null;
         const description = formData.get("description") as string;
         const videoUrl = formData.get("url") as string;
         const customThumb = (formData.get("thumbnail") as string)?.trim() || null;
@@ -53,6 +69,7 @@ export default function AddVideoPage() {
 
         const { error: insertError } = await supabase.from("videos").insert({
             title,
+            course,
             description: description || null,
             video_url: videoUrl,
             thumbnail_url: thumbnailUrl,
@@ -68,6 +85,41 @@ export default function AddVideoPage() {
         router.push("/dashboard/videos");
         setIsLoading(false);
     };
+
+    if (isAllowed === null) {
+        return (
+            <div className="space-y-6 animate-in fade-in duration-500 max-w-3xl mx-auto pb-10">
+                <Button asChild variant="ghost" size="sm" className="hover:bg-foreground/5 -ml-3 mb-4">
+                    <Link href="/dashboard/videos">
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Videos
+                    </Link>
+                </Button>
+                <div className="p-6 md:p-8 rounded-2xl border border-foreground/10 bg-background/50 backdrop-blur-md">
+                    <p className="text-muted-foreground">Checking permissions...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (isAllowed === false) {
+        return (
+            <div className="space-y-6 animate-in fade-in duration-500 max-w-3xl mx-auto pb-10">
+                <Button asChild variant="ghost" size="sm" className="hover:bg-foreground/5 -ml-3 mb-4">
+                    <Link href="/dashboard/videos">
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Videos
+                    </Link>
+                </Button>
+                <div className="p-6 md:p-8 rounded-2xl border border-foreground/10 bg-background/50 backdrop-blur-md">
+                    <h1 className="text-2xl font-display mb-2">Access denied</h1>
+                    <p className="text-muted-foreground">
+                        Only admins can add new videos.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 max-w-3xl mx-auto pb-10">
@@ -107,6 +159,18 @@ export default function AddVideoPage() {
                             id="title"
                             name="title"
                             placeholder="e.g. Introduction to React Hooks"
+                            required
+                            disabled={isLoading}
+                            className="bg-transparent border-foreground/20 h-14 rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground"
+                        />
+                    </div>
+
+                    <div className="space-y-3">
+                        <Label htmlFor="course" className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Course</Label>
+                        <Input
+                            id="course"
+                            name="course"
+                            placeholder="e.g. React, VibeCoding, Backend Fundamentals"
                             required
                             disabled={isLoading}
                             className="bg-transparent border-foreground/20 h-14 rounded-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-foreground"

@@ -7,25 +7,25 @@ import Image from "next/image";
 
 const footerLinks = {
   Platform: [
-    { name: "Videos", href: "#features" },
+    { name: "Videos", href: "/dashboard/videos" },
     { name: "Showcase", href: "/showcase" },
-    { name: "Apply as Internee", href: "#apply" },
+    { name: "Apply as Internee", href: "/dashboard/internee" },
     { name: "Dashboard", href: "/dashboard" },
   ],
   Resources: [
-    { name: "Getting Started", href: "#" },
-    { name: "Learning Paths", href: "#" },
-    { name: "Community", href: "#" },
-    { name: "Blog", href: "#" },
+    { name: "Getting Started", href: "/getting-started" },
+    { name: "Learning Paths", href: "/learning-paths" },
+    { name: "Community", href: "/community" },
+    { name: "Blog", href: "/blog" },
   ],
   Company: [
-    { name: "About Zenter", href: "#" },
-    { name: "Careers", href: "#", badge: "Hiring" },
-    { name: "Contact", href: "#" },
+    { name: "About Zenter", href: "/about" },
+    { name: "Careers", href: "/careers", badge: "Hiring" },
+    { name: "Contact", href: "/contact" },
   ],
   Legal: [
-    { name: "Privacy", href: "#" },
-    { name: "Terms", href: "#" },
+    { name: "Privacy", href: "/privacy" },
+    { name: "Terms", href: "/terms" },
   ],
 };
 
